@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Card } from '@/components/ui/card'
+import { getZipCodeCoordinates } from '@/lib/zipcode-geocoder'
 
 // Mapbox access token from environment
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || 'pk.eyJ1IjoiYWJoaXJhc3RvZ2k4MDAiLCJhIjoiY21seDkzdTh3MGp2eTNkb2oyZWM2ZDZiZCJ9.aBgaZF9WCksZNbiDeXs5DQ'
@@ -26,18 +27,11 @@ interface HousingData {
   longitude: number
 }
 
-interface ZipcodeCoords {
-  zipcode: string
-  latitude: number
-  longitude: number
-}
-
 export function HousingHeatmap() {
   const mapContainer = useRef<HTMLDivElement>(null)
   const map = useRef<mapboxgl.Map | null>(null)
   const [selectedYear, setSelectedYear] = useState<string>('2022')
   const [housingData, setHousingData] = useState<HousingData[]>([])
-  const [zipcodeCoords, setZipcodeCoords] = useState<ZipcodeCoords[]>([])
   const [loading, setLoading] = useState(true)
   const [minValue, setMinValue] = useState(0)
   const [maxValue, setMaxValue] = useState(100)
@@ -48,56 +42,62 @@ export function HousingHeatmap() {
   useEffect(() => {
     async function loadData() {
       try {
+        console.log('[v0] Starting data load...')
+        
         // Load housing occupancy data
         const housingResponse = await fetch('/api/housing-data')
+        if (!housingResponse.ok) {
+          throw new Error(`Failed to fetch housing data: ${housingResponse.status}`)
+        }
         const housingText = await housingResponse.text()
+        console.log('[v0] Housing data loaded, length:', housingText.length)
+        
         const housingLines = housingText.trim().split('\n')
         const housingHeaders = housingLines[0].split(',')
+        console.log('[v0] Housing headers:', housingHeaders)
+        console.log('[v0] Housing data lines:', housingLines.length)
         
         const housingRecords: HousingData[] = []
         for (let i = 1; i < housingLines.length; i++) {
           const values = housingLines[i].split(',')
           if (values.length >= 5) {
-            housingRecords.push({
-              zipcode: values[0],
-              year: parseInt(values[1]),
-              total_units: parseInt(values[2]),
-              occupied_units: parseInt(values[3]),
-              vacant_units: parseInt(values[4]),
-              normalized_units: 0, // Will calculate
-              latitude: 0, // Will populate
-              longitude: 0 // Will populate
-            })
+            const totalUnits = parseInt(values[2])
+            if (!isNaN(totalUnits)) {
+              housingRecords.push({
+                zipcode: values[0],
+                year: parseInt(values[1]),
+                total_units: totalUnits,
+                occupied_units: parseInt(values[3]),
+                vacant_units: parseInt(values[4]),
+                normalized_units: 0, // Will calculate
+                latitude: 0, // Will populate
+                longitude: 0 // Will populate
+              })
+            }
           }
         }
+        console.log('[v0] Parsed housing records:', housingRecords.length)
 
-        // Load zipcode coordinates
-        const coordsResponse = await fetch('/zipcode-data.csv')
-        const coordsText = await coordsResponse.text()
-        const coordsLines = coordsText.trim().split('\n')
-        
-        const coords: ZipcodeCoords[] = []
-        for (let i = 1; i < coordsLines.length; i++) {
-          const values = coordsLines[i].split(',')
-          if (values.length >= 5) {
-            coords.push({
-              zipcode: values[0],
-              latitude: parseFloat(values[3]),
-              longitude: parseFloat(values[4])
-            })
-          }
-        }
-
-        // Create zipcode to coords map
+        // Use the geocoder to get coordinates for all zipcodes
         const coordsMap = new Map<string, { lat: number; lng: number }>()
-        coords.forEach(c => {
-          coordsMap.set(c.zipcode, { lat: c.latitude, lng: c.longitude })
+        const uniqueZips = new Set(housingRecords.map(r => r.zipcode))
+        
+        console.log('[v0] Geocoding', uniqueZips.size, 'unique zip codes...')
+        
+        uniqueZips.forEach(zip => {
+          const coords = getZipCodeCoordinates(zip)
+          if (coords) {
+            coordsMap.set(zip, coords)
+          }
         })
+        
+        console.log('[v0] Successfully geocoded:', coordsMap.size, 'zipcodes')
 
         // Calculate normalization values
         const allTotalUnits = housingRecords.map(r => r.total_units)
         const min = Math.min(...allTotalUnits)
         const max = Math.max(...allTotalUnits)
+        console.log('[v0] Unit range:', min, '-', max)
         setMinValue(min)
         setMaxValue(max)
 
@@ -115,12 +115,11 @@ export function HousingHeatmap() {
             }
           })
 
-        setHousingData(merged)
-        setZipcodeCoords(coords)
-        setLoading(false)
+        console.log('[v0] Merged records:', merged.length)
+        console.log('[v0] Sample merged record:', merged[0])
         
-        console.log('[v0] Loaded housing data:', merged.length, 'records')
-        console.log('[v0] Value range:', min, '-', max)
+        setHousingData(merged)
+        setLoading(false)
       } catch (error) {
         console.error('[v0] Error loading data:', error)
         setLoading(false)
