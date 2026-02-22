@@ -24,7 +24,7 @@ export function MapPanel({ mode, selectedZcta, onZctaSelect, onZctaDeselect }: M
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? '';
+  const MAPBOX_TOKEN = 'pk.eyJ1IjoiYWJoaXJhc3RvZ2k4MDAiLCJhIjoiY21seDkzdTh3MGp2eTNkb2oyZWM2ZDZiZCJ9.aBgaZF9WCksZNbiDeXs5DQ';
 
   useEffect(() => {
     async function loadData() {
