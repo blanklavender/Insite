@@ -2,8 +2,30 @@ import csv
 import os
 import json
 
-# Define paths relative to project root
-project_root = '/vercel/share/v0-project'
+# Use current working directory
+cwd = os.getcwd()
+print(f'Current working directory: {cwd}')
+
+# Try different path approaches
+possible_roots = [
+    cwd,
+    '/vercel/share/v0-project',
+    os.path.join(cwd, '..'),
+]
+
+project_root = None
+for root in possible_roots:
+    test_path = os.path.join(root, 'dataset_extraction', 'census_data_output', 'B25002_occupancy_status_zcta.csv')
+    if os.path.exists(test_path):
+        project_root = root
+        print(f'Found project root: {project_root}')
+        break
+
+if not project_root:
+    print('ERROR: Could not find project root')
+    print('Searched in:', possible_roots)
+    exit(1)
+
 input_csv = os.path.join(project_root, 'dataset_extraction', 'census_data_output', 'B25002_occupancy_status_zcta.csv')
 zipcode_csv = os.path.join(project_root, 'public', 'zipcode-data.csv')
 output_csv = os.path.join(project_root, 'public', 'housing-data.csv')
