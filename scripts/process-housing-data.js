@@ -1,9 +1,7 @@
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const projectRoot = '/vercel/share/v0-project';
 
 // US ZIP code centroids dataset (a small subset for demonstration)
 // In production, you'd want a complete ZIP code database
@@ -43,7 +41,7 @@ async function processHousingData() {
   console.log('Processing housing data...');
   
   // Read the occupancy status data
-  const csvPath = path.join(__dirname, '../dataset_extraction/census_data_output/B25002_occupancy_status_zcta.csv');
+  const csvPath = path.join(projectRoot, 'dataset_extraction/census_data_output/B25002_occupancy_status_zcta.csv');
   const csvContent = fs.readFileSync(csvPath, 'utf-8');
   
   // Parse CSV
@@ -84,7 +82,7 @@ async function processHousingData() {
   
   // For simplicity, we'll use the existing zipcode-data.csv coordinates
   // and match with our housing data
-  const existingZipPath = path.join(__dirname, '../public/zipcode-data.csv');
+  const existingZipPath = path.join(projectRoot, 'public/zipcode-data.csv');
   const existingZipContent = fs.readFileSync(existingZipPath, 'utf-8');
   const existingZipLines = existingZipContent.trim().split('\n');
   
@@ -126,7 +124,7 @@ async function processHousingData() {
   console.log(`Created ${outputData.length} records with coordinates`);
   
   // Write to public directory
-  const outputPath = path.join(__dirname, '../public/housing-data.csv');
+  const outputPath = path.join(projectRoot, 'public/housing-data.csv');
   
   const csvOutput = [
     'zipcode,year,total_units,occupied_units,vacant_units,normalized_units,latitude,longitude',
@@ -141,7 +139,7 @@ async function processHousingData() {
   // Also create year-specific files for easier loading
   for (let year = 2011; year <= 2022; year++) {
     const yearData = outputData.filter(d => d.year === year);
-    const yearPath = path.join(__dirname, `../public/housing-data-${year}.csv`);
+    const yearPath = path.join(projectRoot, `public/housing-data-${year}.csv`);
     
     const yearCsvOutput = [
       'zipcode,year,total_units,occupied_units,vacant_units,normalized_units,latitude,longitude',
